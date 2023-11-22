@@ -3,7 +3,7 @@ clc; close all; clearvars
 figure; hold on;
 
 % Reading and plotting gray scaled image
-img = imread("kahvi9.jpg");
+img = imread("kahvi10.jpg");
 img_gray = make_gray_image(img, 80);
 
 imshow(img)
@@ -104,33 +104,24 @@ for i = i0:-1:0
     end
 end
 
-btn_lower_b = round(btn_upper_b + 0.45*(btn_right_b-btn_left_b));
+btn_lower_b = btn_upper_b + 0.45*(btn_right_b-btn_left_b);
 
 btn_corners = [btn_left_b btn_upper_b ; btn_left_b btn_lower_b ;...
     btn_right_b btn_lower_b ; btn_right_b btn_upper_b];
 
 plot_boundaries(btn_corners,'blue')
 
-cp_upper_b = round(cm_upper_b + 0.55*(cm_lower_b-cm_upper_b));
-cp_lower_b = round(cm_lower_b - 0.18*(cm_lower_b-cm_upper_b));
+cp_upper_b = cm_upper_b + 0.55*(cm_lower_b-cm_upper_b);
+cp_lower_b = cm_lower_b - 0.17*(cm_lower_b-cm_upper_b);
 
-cp_left_b = round(cm_left_b + 0.53*(cm_right_b-cm_left_b));
-cp_left_mb = round(cm_left_b + 0.65*(cm_right_b-cm_left_b));
-cp_right_b = round(cm_right_b - 0.15*(cm_right_b-cm_left_b));
-cp_right_mb = round(cm_right_b - 0.26*(cm_right_b-cm_left_b));
+cp_left_b = cm_left_b + 0.53*(cm_right_b-cm_left_b);
+cp_left_mb = cm_left_b + 0.65*(cm_right_b-cm_left_b);
+cp_right_b = cm_right_b - 0.15*(cm_right_b-cm_left_b);
+cp_right_mb = cm_right_b - 0.26*(cm_right_b-cm_left_b);
 
-cp1_corners = [cp_left_b cp_upper_b ; cp_left_b cp_lower_b ;...
-    cp_left_mb cp_lower_b ; cp_left_mb cp_upper_b];
-cp2_corners = [cp_right_mb cp_upper_b ; cp_right_mb cp_lower_b ;...
-    cp_right_b cp_lower_b ; cp_right_b cp_upper_b];
-cp_corners = [cp_left_b cp_upper_b ; cp_left_b cp_lower_b ;...
-    cp_right_b cp_lower_b ; cp_right_b cp_upper_b];
+cp1_corners = [cp_left_b _upper_b ; btn_left_b btn_lower_b ;...
+    btn_right_b btn_lower_b ; btn_right_b btn_upper_b];
 
-plot_boundaries(cp1_corners, 'g')
-plot_boundaries(cp2_corners, 'g')
-
-bl_cp = min([calculate_blackness_level(cp1_corners,img_gray) calculate_blackness_level(cp1_corners,img_gray)])
-bl_btn = calculate_blackness_level(btn_corners,img_gray)
 
 %   FUNCTIONS
 
@@ -138,16 +129,6 @@ function [] = plot_boundaries(c, color)
 
     rectangle('Position',[c(1,:) c(3,1)-c(2,1)...
     c(2,2)-c(1,2)], 'EdgeColor',color, 'LineWidth',2)
-
-end
-
-function [BL] = calculate_blackness_level(corners, img_gray)
-
-    BL = 0;
-    for i = corners(1,1):corners(3,1)
-        BL = BL + length(find(img_gray(corners(1,2):corners(2,2),i) < 50));
-    end
-    BL = BL/(length(corners(1,1):corners(3,1))*length(corners(1,2):corners(2,2)));
 
 end
 
