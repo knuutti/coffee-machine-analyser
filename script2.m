@@ -3,7 +3,7 @@ clc; close all; clearvars
 figure; hold on;
 
 % Reading and plotting gray scaled image
-img = imread("kahvi9.jpg");
+img = imread("./img/kahvi9.jpg");
 img_gray = make_gray_image(img, 80);
 
 imshow(img)
