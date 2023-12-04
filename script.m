@@ -3,11 +3,10 @@ clc; close all; clearvars
 figure; hold on;
 
 % Reading and plotting gray scaled image
-img = imread("./img/kahvi9.jpg");
+img = imread("./img/kahvi12.jpg");
 img_gray = make_gray_image(img, 80);
 
 imshow(img)
-axis('on','image')
 
 % Dimensions of gray scaled image
 [h, w] = size(img_gray);
@@ -111,6 +110,7 @@ btn_corners = [btn_left_b btn_upper_b ; btn_left_b btn_lower_b ;...
 
 plot_boundaries(btn_corners,'blue')
 
+%% 
 cp_upper_b = round(cm_upper_b + 0.55*(cm_lower_b-cm_upper_b));
 cp_lower_b = round(cm_lower_b - 0.18*(cm_lower_b-cm_upper_b));
 
@@ -129,10 +129,33 @@ cp_corners = [cp_left_b cp_upper_b ; cp_left_b cp_lower_b ;...
 plot_boundaries(cp1_corners, 'g')
 plot_boundaries(cp2_corners, 'g')
 
-bl_cp = min([calculate_blackness_level(cp1_corners,img_gray) calculate_blackness_level(cp1_corners,img_gray)])
-bl_btn = calculate_blackness_level(btn_corners,img_gray)
+bl_cp = calculate_blackness_level(cp1_corners,img_gray);
+bl_btn = calculate_blackness_level(btn_corners,img_gray);
+
+bl_cp1 = coffee_level(cp1_corners,img_gray);
+bl_cp2 = coffee_level(cp2_corners,img_gray);
+
+disp("Kahvia on pannussa " + num2str(round(10*min([bl_cp1 bl_cp2]))) + " kuppia")
+%hold off
+%imshow(img_gray)
 
 %   FUNCTIONS
+
+function [BL] = coffee_level(cp, img_gray)
+
+    level = 0;
+    for i = cp(2,2):-1:cp(1,2)
+        level = i;
+        black_pixels = length(find(img_gray(i,cp(1,1):cp(3,1)) < 50));
+        if black_pixels < 0.1*length(cp(1,1):cp(3,1))
+            break
+        end
+    end
+    %yline(level)
+
+    BL = 1-((level-cp(1,2))/(cp(2,2)-cp(1,2)));
+
+end
 
 function [] = plot_boundaries(c, color)
 
