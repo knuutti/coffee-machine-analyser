@@ -5,8 +5,6 @@ import numpy as np
 def main():
 
 	cap = cv2.VideoCapture(1 + cv2.CAP_DSHOW)
-	cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-	cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 	cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
 	while True: 
@@ -15,23 +13,53 @@ def main():
 		
 		# Read video frame by frame 
 		_, img = cap.read()
+		#img = cv2.imread("img/kahvi15.jpg")
+		#img = cv2.resize(img, (1280,720))
+
 		img = rotate_image(img, 2.5)
 		img = resize_image(img)
 
 		img_kmeans = kmeans_process(img, 3)
 		img_global = global_thresholding(img_kmeans, 30)
+
+		img_process = img
+
 		img_edges = laplace_process(img_global, 5)
-		img_kmeans[img_edges>0] = [0,0,255]
+		img_process[img_edges>0] = [0,0,255]
 		
 		top, bottom, left, right = find_boundaries(img_edges)
-		img_kmeans[top,:,:] = [0,0,0]
-		img_kmeans[bottom,:,:] = [0,0,0]
-		img_kmeans[:,left,:] = [0,0,0]
-		img_kmeans[:,right,:] = [0,0,0]
+		img_process[top,:,:] = [0,0,0]
+		img_process[bottom,:,:] = [0,0,0]
+		img_process[:,left,:] = [0,0,0]
+		img_process[:,right,:] = [0,0,0]
+
+		
+
+		t = int(0.55*(top+bottom))
+		b = int(0.84*(bottom-top))
+		l1 = (left+right)//2
+		l2 = left+int(0.7*(right-left))
+		r1 = left+int(0.8*(right-left))
+		r2 = right
+
+		
+
+		#print("Kahvi levu:", find_coffee_level(l1, l2, r1, r2, b, t, img_edges))
+		level = find_coffee_level(l1, l2, r1, r2, b, t, img_edges)
+
+		# img_process[t,:,:] = [0,255,0]
+		img_process[b,:,:] = [0,255,0]
+		# img_process[:,(left+right)//2,:] = [0,255,0]
+		# img_process[:,l2,:] = [0,255,0]
+		# img_process[:,r1,:] = [0,255,0]
+
+		print("Kahvi%:", 1-((level-t)/(b-t)))
+		img_process[level-2:level+2,l1:r2,:] = [255,0,0]
 
 		#cv2.imwrite("kuva.png", img)
-		cv2.imshow('my webcam', img_kmeans)
+		cv2.imshow('my webcam', img_process)
 		if cv2.waitKey(1) == 27:
+			cv2.imwrite("temp2.png", img)
 			break  # esc to quit
 
 # EDIT THIS IS CAMERA POSITION CHANGES
@@ -43,7 +71,7 @@ def resize_image(img):
 	height, width, _ = img.shape
 
 	#prepare the crop
-	centerX,centerY=int(0.4*height),int(0.26*width)
+	centerX,centerY=int(0.39*height),int(0.26*width)
 	radiusX,radiusY= int(scale*height/100),int(scale*width/100)
 
 	minX,maxX=centerX-radiusX,centerX+radiusX
@@ -111,21 +139,40 @@ def find_boundaries(img):
 		if sum(img[i][:]) >= 1:
 			top = i
 			break
-	for i in range(height-1, -1, -1):
-		if sum(img[i][:]) >= 1:
-			bottom = i
-			break
 
 	for i in range(int(0.1*width),width):
 		if sum(img[0:int(0.2*height),i]) >= 1:
 			left = i
 			break
-	for i in range(int(0.9*width), -1, -1):
-		if sum(img[0:int(0.2*height),i]) >= 1:
+	for i in range(int(0.5*width),width):
+		if sum(img[0:int(0.4*height),i]) < 1:
 			right = i
+			break
+
+	for i in range(height-1, -1, -1):
+		if sum(img[i][int(0.2*width):int(0.5*width)]) >= 1:
+			bottom = i
 			break
 			
 	return top, bottom, left, right
+
+
+def find_coffee_level(l1, l2, r1, r2, b, t, img_edges):
+	level_l = 0
+	level_r = 0
+	for level in range(b, t, -1):
+		if sum(img_edges[level,l1:l2]) == 0:
+			level_l = level
+			break
+	for level in range(b, t, -1):
+		if sum(img_edges[level,r1:r2]) == 0:
+			level_r = level
+			break
+	
+	level = max([level_l, level_r])
+
+	return level
+
 
 
 
