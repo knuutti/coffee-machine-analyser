@@ -1,4 +1,5 @@
 import cv2
+import datetime
 import time
 import numpy as np
 
@@ -7,9 +8,13 @@ def main():
 	cap = cv2.VideoCapture(0 + cv2.CAP_DSHOW)
 	cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
+	#file = open("kahvidata.txt", 'w')
+	#file.close()
+
 	while True: 
+
 		# New image after every x seconds
-		time.sleep(2)
+		time.sleep(15)
 		
 		# Read video frame by frame 
 		_, img = cap.read()
@@ -18,6 +23,8 @@ def main():
 
 		img = rotate_image(img, 2.5)
 		img = resize_image(img)
+
+
 
 		img_kmeans = kmeans_process(img, 3)
 		img_global = global_thresholding(img_kmeans, 30)
@@ -47,8 +54,16 @@ def main():
 		#print("Kahvi levu:", find_coffee_level(l1, l2, r1, r2, b, t, img_edges))
 		level = find_coffee_level(l1, l2, r1, r2, b, t, img_kmeans)
 
-		coffee_coefficient = 1-(level-t)/(b-t)
-		print("Kahvia pannussa:",round(10*coffee_coefficient, 1))
+		if b != t:
+			time_stamp = datetime.datetime.now()
+			#print(time_stamp)
+			coffee_coefficient = 1-(level-t)/(b-t)
+			#print("Kahvia pannussa:",round(10*coffee_coefficient, 1))
+			file = open("kahvidata.txt", 'a')
+			file.write(str(coffee_coefficient) + ";" +str(time_stamp) + "\n")
+			file.close()
+
+
 
 		img_process[t,l1:r2,:] = [0,255,0]
 		img_process[b,l1:r2,:] = [0,255,0]
@@ -66,17 +81,19 @@ def main():
 		cv2.imshow('my webcam', img_process)
 		if cv2.waitKey(1) == 27:
 			break  # esc to quit
+		
+		
 
 # EDIT THIS IS CAMERA POSITION CHANGES
 # Modify the original image to zoom the coffee machine
 def resize_image(img):
-	scale = 10
+	scale = 9
 
 	#get the webcam size
 	height, width, _ = img.shape
 
 	#prepare the crop
-	centerX,centerY=int(0.39*height),int(0.26*width)
+	centerX,centerY=int(0.38*height),int(0.26*width)
 	radiusX,radiusY= int(scale*height/100),int(scale*width/100)
 
 	minX,maxX=centerX-radiusX,centerX+radiusX
