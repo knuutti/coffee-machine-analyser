@@ -4,12 +4,12 @@ import numpy as np
 
 def main():
 
-	cap = cv2.VideoCapture(1 + cv2.CAP_DSHOW)
+	cap = cv2.VideoCapture(0 + cv2.CAP_DSHOW)
 	cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
 	while True: 
 		# New image after every x seconds
-		#time.sleep(1)
+		time.sleep(2)
 		
 		# Read video frame by frame 
 		_, img = cap.read()
@@ -25,18 +25,18 @@ def main():
 		img_process = img
 
 		img_edges = laplace_process(img_global, 5)
-		img_process[img_edges>0] = [0,0,255]
+		#img_process[img_edges>0] = [0,0,255]
 		
 		top, bottom, left, right = find_boundaries(img_edges)
-		img_process[top,:,:] = [0,0,0]
-		img_process[bottom,:,:] = [0,0,0]
-		img_process[:,left,:] = [0,0,0]
-		img_process[:,right,:] = [0,0,0]
+		img_process[top,left:right,:] = [0,0,255]
+		img_process[bottom,left:right,:] = [0,0,255]
+		img_process[top:bottom,left,:] = [0,0,255]
+		img_process[top:bottom,right,:] = [0,0,255]
 
 		
 
-		t = int(0.55*(top+bottom))
-		b = int(0.84*(bottom-top))
+		t = top + int(0.54*(bottom-top))
+		b = top + int(0.83*(bottom-top))
 		l1 = (left+right)//2
 		l2 = left+int(0.7*(right-left))
 		r1 = left+int(0.8*(right-left))
@@ -45,27 +45,32 @@ def main():
 		
 
 		#print("Kahvi levu:", find_coffee_level(l1, l2, r1, r2, b, t, img_edges))
-		level = find_coffee_level(l1, l2, r1, r2, b, t, img_edges)
+		level = find_coffee_level(l1, l2, r1, r2, b, t, img_kmeans)
 
-		# img_process[t,:,:] = [0,255,0]
-		img_process[b,:,:] = [0,255,0]
+		coffee_coefficient = 1-(level-t)/(b-t)
+		print("Kahvia pannussa:",round(10*coffee_coefficient, 1))
+
+		img_process[t,l1:r2,:] = [0,255,0]
+		img_process[b,l1:r2,:] = [0,255,0]
+		
+		img_process[level,l1:r2,:] = [255,255,0]
 		# img_process[:,(left+right)//2,:] = [0,255,0]
-		# img_process[:,l2,:] = [0,255,0]
-		# img_process[:,r1,:] = [0,255,0]
+		img_process[t:b,l1,:] = [0,255,0]
+		img_process[t:b,r2,:] = [0,255,0]
+		img_process[t:b,l2,:] = [0,255,0]
+		img_process[t:b,r1,:] = [0,255,0]
 
-		print("Kahvi%:", 1-((level-t)/(b-t)))
-		img_process[level-2:level+2,l1:r2,:] = [255,0,0]
+		#print("Kahvia:", round(coffee_amount,2), "kuppia")
 
 		#cv2.imwrite("kuva.png", img)
 		cv2.imshow('my webcam', img_process)
 		if cv2.waitKey(1) == 27:
-			cv2.imwrite("temp2.png", img)
 			break  # esc to quit
 
 # EDIT THIS IS CAMERA POSITION CHANGES
 # Modify the original image to zoom the coffee machine
 def resize_image(img):
-	scale = 9
+	scale = 10
 
 	#get the webcam size
 	height, width, _ = img.shape
@@ -105,6 +110,7 @@ def kmeans_process(img, k):
 	# for color in sorted(color_sums):
 	# 	centers[color_sums.index(color)] = [new_colors.pop(0)]
 	centers[color_sums.index(min(color_sums))] = [0]
+	centers[color_sums.index(max(color_sums))] = [255]
 		
 	# create the segmented image using the cluster centroids
 	segmented_image = centers[labels.flatten()]
@@ -136,7 +142,7 @@ def find_boundaries(img):
 	height, width = img.shape
 
 	for i in range(height):
-		if sum(img[i][:]) >= 1:
+		if sum(img[i][int(0.2*width):int(0.8*width)]) >= 1:
 			top = i
 			break
 
@@ -158,19 +164,26 @@ def find_boundaries(img):
 
 
 def find_coffee_level(l1, l2, r1, r2, b, t, img_edges):
-	level_l = 0
-	level_r = 0
+	level_l = t
+	level_r = t
 	for level in range(b, t, -1):
-		if sum(img_edges[level,l1:l2]) == 0:
+		
+		area = img_edges[level,l1:l2,0]
+		#print(level)
+		#print(sum(map(lambda x: 1 if x<255 else 0, area)))
+		#print(area)
+		if sum(map(lambda x: 1 if x>0 else 0, area)) > 0.9*(l2-l1):
 			level_l = level
 			break
 	for level in range(b, t, -1):
-		if sum(img_edges[level,r1:r2]) == 0:
+		
+		area = img_edges[level,l1:l2,0]
+		if sum(map(lambda x: 1 if x>0 else 0, area)) > 0.9*(r2-r1):
 			level_r = level
 			break
 	
 	level = max([level_l, level_r])
-
+	#print(level, b, t)
 	return level
 
 
