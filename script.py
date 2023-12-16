@@ -8,9 +8,6 @@ def main():
 	cap = cv2.VideoCapture(0 + cv2.CAP_DSHOW)
 	cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
-	#file = open("kahvidata.txt", 'w')
-	#file.close()
-
 	while True: 
 
 		# New image after every x seconds
@@ -24,67 +21,63 @@ def main():
 		img = rotate_image(img, 2.5)
 		img = resize_image(img)
 
-
-
 		img_kmeans = kmeans_process(img, 3)
 		img_global = global_thresholding(img_kmeans, 30)
-
-		img_process = img
-
 		img_edges = laplace_process(img_global, 5)
-		#img_process[img_edges>0] = [0,0,255]
+		valid = validate_image(img_global)
 		
+		img_process = img_kmeans
 		top, bottom, left, right = find_boundaries(img_edges)
 		img_process[top,left:right,:] = [0,0,255]
 		img_process[bottom,left:right,:] = [0,0,255]
 		img_process[top:bottom,left,:] = [0,0,255]
 		img_process[top:bottom,right,:] = [0,0,255]
 
-		
+
 
 		t = top + int(0.54*(bottom-top))
 		b = top + int(0.83*(bottom-top))
 		l1 = (left+right)//2
-		l2 = left+int(0.7*(right-left))
-		r1 = left+int(0.8*(right-left))
+		l2 = left+int(0.72*(right-left))
+		r1 = left+int(0.78*(right-left))
 		r2 = right
 
-		
-
-		#print("Kahvi levu:", find_coffee_level(l1, l2, r1, r2, b, t, img_edges))
 		level = find_coffee_level(l1, l2, r1, r2, b, t, img_kmeans)
 
 		if b != t:
 			time_stamp = datetime.datetime.now()
-			#print(time_stamp)
 			coffee_coefficient = 1-(level-t)/(b-t)
-			#print("Kahvia pannussa:",round(10*coffee_coefficient, 1))
 			file = open("kahvidata.txt", 'a')
-			file.write(str(coffee_coefficient) + ";" +str(time_stamp) + "\n")
+			if valid: file.write(str(coffee_coefficient) + ";" +str(time_stamp) + "\n")
 			file.close()
 
 
-
+		# Add lines to the visualized image
 		img_process[t,l1:r2,:] = [0,255,0]
 		img_process[b,l1:r2,:] = [0,255,0]
-		
 		img_process[level,l1:r2,:] = [255,255,0]
-		# img_process[:,(left+right)//2,:] = [0,255,0]
 		img_process[t:b,l1,:] = [0,255,0]
 		img_process[t:b,r2,:] = [0,255,0]
 		img_process[t:b,l2,:] = [0,255,0]
 		img_process[t:b,r1,:] = [0,255,0]
 
-		#print("Kahvia:", round(coffee_amount,2), "kuppia")
-
-		#cv2.imwrite("kuva.png", img)
 		cv2.imshow('my webcam', img_process)
 		if cv2.waitKey(1) == 27:
 			break  # esc to quit
 		
+
+def validate_image(img_global):
+	height, width, _ = img_global.shape
+	N = height*width
+	total = 0
+	for level in range(0, height):
+		row = img_global[level,0:width,0]
+		total += sum(map(lambda x: 1 if x==0 else 0, row))
+	print(total, N)
+	return total < 0.2*N
 		
 
-# EDIT THIS IS CAMERA POSITION CHANGES
+# EDIT THIS IF CAMERA POSITION CHANGES
 # Modify the original image to zoom the coffee machine
 def resize_image(img):
 	scale = 9
@@ -139,6 +132,8 @@ def global_thresholding(img, threshold):
 	return img
 
 def laplace_process(img, kernel_size):
+	# Source code: https://docs.opencv.org/3.4/d5/db5/tutorial_laplace_operator.html
+	
     # Declare the variables we are going to use
     ddepth = cv2.CV_16S
 
@@ -194,12 +189,13 @@ def find_coffee_level(l1, l2, r1, r2, b, t, img_edges):
 			break
 	for level in range(b, t, -1):
 		
-		area = img_edges[level,l1:l2,0]
+		area = img_edges[level,r1:r2,0]
 		if sum(map(lambda x: 1 if x>0 else 0, area)) > 0.9*(r2-r1):
 			level_r = level
 			break
 	
 	level = max([level_l, level_r])
+	print(level_l, level_r)
 	#print(level, b, t)
 	return level
 
