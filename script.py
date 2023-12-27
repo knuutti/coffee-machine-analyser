@@ -2,21 +2,22 @@ import cv2
 import datetime
 import time
 import numpy as np
+import requests
 
 def main():
+
+	visual = False
 
 	cap = cv2.VideoCapture(0 + cv2.CAP_DSHOW)
 	cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
 	while True: 
 
-		# New image after every x seconds
+		# New image after every 15 seconds
 		time.sleep(15)
 		
 		# Read video frame by frame 
 		_, img = cap.read()
-		#img = cv2.imread("img/kahvi15.jpg")
-		#img = cv2.resize(img, (1280,720))
 
 		img = rotate_image(img, 2.5)
 		img = resize_image(img)
@@ -26,14 +27,7 @@ def main():
 		img_edges = laplace_process(img_global, 5)
 		valid = validate_image(img_global)
 		
-		img_process = img_kmeans
 		top, bottom, left, right = find_boundaries(img_edges)
-		img_process[top,left:right,:] = [0,0,255]
-		img_process[bottom,left:right,:] = [0,0,255]
-		img_process[top:bottom,left,:] = [0,0,255]
-		img_process[top:bottom,right,:] = [0,0,255]
-
-
 
 		t = top + int(0.54*(bottom-top))
 		b = top + int(0.83*(bottom-top))
@@ -44,24 +38,31 @@ def main():
 
 		level = find_coffee_level(l1, l2, r1, r2, b, t, img_kmeans)
 
+		# Post new data point
 		if b != t:
 			time_stamp = datetime.datetime.now()
 			coffee_coefficient = 1-(level-t)/(b-t)
-			file = open("kahvidata.txt", 'a')
-			if valid: file.write(str(coffee_coefficient) + ";" +str(time_stamp) + "\n")
-			file.close()
+			url = "http://localhost:8000"
+			myobj = {"data": {"time": str(time_stamp), "coffee": str(coffee_coefficient)}}
+			requests.post(url, json = myobj)
 
+		if visual:
+			img_process = img_kmeans
+			
+			# Add lines to the visualized image
+			img_process[top,left:right,:] = [0,0,255]
+			img_process[bottom,left:right,:] = [0,0,255]
+			img_process[top:bottom,left,:] = [0,0,255]
+			img_process[top:bottom,right,:] = [0,0,255]
+			img_process[t,l1:r2,:] = [0,255,0]
+			img_process[b,l1:r2,:] = [0,255,0]
+			img_process[level,l1:r2,:] = [255,255,0]
+			img_process[t:b,l1,:] = [0,255,0]
+			img_process[t:b,r2,:] = [0,255,0]
+			img_process[t:b,l2,:] = [0,255,0]
+			img_process[t:b,r1,:] = [0,255,0]
 
-		# Add lines to the visualized image
-		img_process[t,l1:r2,:] = [0,255,0]
-		img_process[b,l1:r2,:] = [0,255,0]
-		img_process[level,l1:r2,:] = [255,255,0]
-		img_process[t:b,l1,:] = [0,255,0]
-		img_process[t:b,r2,:] = [0,255,0]
-		img_process[t:b,l2,:] = [0,255,0]
-		img_process[t:b,r1,:] = [0,255,0]
-
-		cv2.imshow('my webcam', img_process)
+			cv2.imshow('Coffee Cam', img_process)
 		if cv2.waitKey(1) == 27:
 			break  # esc to quit
 		
